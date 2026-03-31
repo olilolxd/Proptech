@@ -11,73 +11,73 @@ async def extract_montreal_properties():
         print("Lancement de Playwright pour scraper Kijiji Immobilier (sans blocage anti-bot)...")
         # Headless=True car Kijiji ne bloque pas agressivement
         browser = await p.chromium.launch(headless=True) 
-        context = await browser.new_context(
-            user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-        )
-        page = await context.new_page()
+        page = await browser.new_page()
         
-        # Scrape Condos for sale in Montreal
-        url = "https://www.kijiji.ca/b-condo-a-vendre/grand-montreal/c43l80002"
-        print(f"Navigation vers Kijiji (Condos à vendre Montréal)...")
+        # Scrape Immobilier in Montreal (to avoid Kijiji aggressive sub-category bot-detection), searching "condo"
+        url = "https://www.kijiji.ca/b-immobilier/grand-montreal/condo-a-vendre/k0c34l80002"
+        print(f"Navigation vers Kijiji (Immobilier Montréal)...")
         
         try:
             await page.goto(url, timeout=60000, wait_until="domcontentloaded")
             await page.wait_for_timeout(4000)
             
-            # Kijiji utilise deux layouts selon l'A/B testing ou la région : "search-item" ou "listing-card"
-            listings = await page.evaluate('''() => {
-                const results = [];
-                let cards = document.querySelectorAll('[data-testid="listing-card"]');
-                if (cards.length === 0) {
-                    cards = document.querySelectorAll('.search-item');
-                }
-                
-                cards.forEach(card => {
-                    try {
-                        const titleEl = card.querySelector('img') || card.querySelector('.title a');
-                        const priceEl = card.querySelector('[data-testid="listing-price"]') || card.querySelector('.price');
-                        const locEl = card.querySelector('[data-testid="listing-location"]') || card.querySelector('.location');
-                        const linkEl = card.querySelector('a.title') || card.querySelector('a');
-                        
-                        let title = "";
-                        if (titleEl) {
-                            title = titleEl.getAttribute('alt') || titleEl.innerText || "";
-                        }
-                        
-                        if (priceEl && title) {
-                            results.push({
-                                "Title": title.trim(),
-                                "Price_Raw": priceEl.innerText || "",
-                                "Location": locEl ? locEl.innerText.trim() : "Montréal",
-                                "Link": linkEl ? (linkEl.href.startsWith("http") ? linkEl.href : "https://www.kijiji.ca" + linkEl.getAttribute('href')) : "https://www.kijiji.ca"
-                            });
-                        }
-                    } catch (e) {}
-                });
-                return results;
-            }''')
+            # Kijiji utilise deux layouts selon l'A/B testing ou la région
+            cards = await page.query_selector_all('[data-testid="listing-card"]')
+            if not cards:
+                cards = await page.query_selector_all('.search-item')
             
-            print(f"{len(listings)} propriétés extraites avec succès de la page principale.")
+            print(f"{len(cards)} annonces trouvées sur la page.")
             
-            for item in listings:
-                p_raw = item["Price_Raw"].replace(',', '').replace(' ', '')
-                if '$' in p_raw:
-                    p_raw = p_raw.split('$')[1]
-                if '.' in p_raw:
-                    p_raw = p_raw.split('.')[0]
-                
-                price_str = re.sub(r'[^\d]', '', p_raw)
-                
-                if price_str:
-                    price = int(price_str)
-                    if price > 50000: # Ignore les fausses annonces à 1$
-                        data.append({
-                            "Adresse": item["Title"][:50] + ("..." if len(item["Title"]) > 50 else ""),
-                            "Prix": price,
-                            "Chambres": "2", # Valeur moyenne (Kijiji expose difficilement sans ouvrir l'annonce)
-                            "Salles_De_Bain": "1",
-                            "Lien": item["Link"]
-                        })
+            for card in cards:
+                try:
+                    title_el = await card.query_selector('img')
+                    title = await title_el.get_attribute('alt') if title_el else ""
+                    if not title:
+                        title_el = await card.query_selector('.title a')
+                        title = await title_el.inner_text() if title_el else ""
+                    if not title:
+                        title_el = await card.query_selector('[data-testid="listing-title"]')
+                        title = await title_el.inner_text() if title_el else ""
+                    
+                    price_el = await card.query_selector('[data-testid="listing-price"]')
+                    if not price_el:
+                        price_el = await card.query_selector('.price')
+                    
+                    loc_el = await card.query_selector('[data-testid="listing-location"]')
+                    if not loc_el:
+                        loc_el = await card.query_selector('.location')
+                    
+                    link_el = await card.query_selector('a.title')
+                    if not link_el:
+                        link_el = await card.query_selector('a')
+                    
+                    price_raw = await price_el.inner_text() if price_el else ""
+                    location = await loc_el.inner_text() if loc_el else "Montréal"
+                    link_href = await link_el.get_attribute('href') if link_el else ""
+                    link = (link_href if link_href.startswith("http") else "https://www.kijiji.ca" + link_href) if link_href else "https://www.kijiji.ca"
+                    
+                    if price_raw and title:
+                        p_raw = price_raw.replace(',', '').replace(' ', '')
+                        if '$' in p_raw:
+                            p_raw = p_raw.split('$')[1]
+                        if '.' in p_raw:
+                            p_raw = p_raw.split('.')[0]
+                        
+                        price_str = re.sub(r'[^\d]', '', p_raw)
+                        
+                        if price_str:
+                            price = int(price_str)
+                            if price > 20000:  # Accepte les condos/maisons, même petits prix (ex: terrains) pour éviter les locations à 1000$
+                                data.append({
+                                    "Adresse": title.strip()[:60] + ("..." if len(title) > 60 else ""),
+                                    "Prix": price,
+                                    "Chambres": "2",
+                                    "Salles_De_Bain": "1",
+                                    "Lien": link
+                                })
+                except Exception as ex:
+                    continue
+                    
         except Exception as e:
             print(f"⚠️ Erreur d'extraction sur Kijiji : {e}")
 
