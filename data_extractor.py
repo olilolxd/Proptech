@@ -20,8 +20,13 @@ async def extract_montreal_properties():
         url = "https://www.realtor.ca/map#ZoomLevel=11&LatitudeMax=45.70&LongitudeMax=-73.40&LatitudeMin=45.40&LongitudeMin=-73.90&CurrentPage=1&Sort=1-A&PropertyTypeGroupID=1&PropertySearchTypeId=1&TransactionTypeId=2&Currency=CAD"
         print(f"Navigation vers Realtor.ca (Montréal)...")
         
-        await page.goto(url)
-        print("Attente du chargement des résultats (15 secondes)...")
+        try:
+            # Utilisation de domcontentloaded pour éviter d'attendre les trackers/polices infiniment
+            await page.goto(url, timeout=60000, wait_until="domcontentloaded")
+        except Exception as e:
+            print(f"Note: Le chargement initial a pris du temps ({e}). On tente l'extraction quand même...")
+            
+        print("Attente visuelle du chargement des résultats (15 secondes)...")
         await page.wait_for_timeout(15000)
         
         # Scrape script to run in the context of the page
