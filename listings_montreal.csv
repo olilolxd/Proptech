@@ -1,8 +1,6 @@
 Adresse,Prix,Chambres,Salles_De_Bain,Lien
-"1234 Rue Saint-Denis, Le Plateau-Mont-Royal, QC H2X 3J6",650000,2,1,https://www.realtor.ca
-"5678 Avenue du Mont-Royal, Le Plateau-Mont-Royal, QC H2T 1X6",850000,3,2,https://www.realtor.ca
-"9012 Rue Beaubien E, Rosemont, QC H1Z 1W2",520000,2,1,https://www.realtor.ca
-"3456 Rue Ontario E, Hochelaga-Maisonneuve, QC H1W 1P9",415000,1,1,https://www.realtor.ca
-"7890 Boulevard Saint-Laurent, Villeray, QC H2R 1X1",599000,2,1,https://www.realtor.ca
-"4567 Rue Wellington, Verdun, QC H4G 1W8",485000,2,1,https://www.realtor.ca
-"1515 Chemin de la Côte-des-Neiges, CNDN, QC H3H 1J6",725000,3,2,https://www.realtor.ca
+"1234 Rue Saint-Denis, Le Plateau-Mont-Royal, QC",650000,2,1,https://www.realtor.ca
+"5678 Avenue du Mont-Royal, Le Plateau-Mont-Royal, QC",850000,3,2,https://www.realtor.ca
+"9012 Rue Beaubien E, Rosemont, QC",520000,2,1,https://www.realtor.ca
+"3456 Rue Ontario E, Hochelaga-Maisonneuve, QC",415000,1,1,https://www.realtor.ca
+"7890 Boulevard Saint-Laurent, Villeray, QC",599000,2,1,https://www.realtor.ca
